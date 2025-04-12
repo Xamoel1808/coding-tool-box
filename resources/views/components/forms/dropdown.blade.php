@@ -10,7 +10,7 @@
     @if($label)
         <label class="form-label font-normal text-gray-900">{{ $label }}</label>
     @endif
-    <select class="select" name="select" {{ $disabled ? 'disabled' : '' }} name="{{ $name }}">
+    <select class="select" {{ $disabled ? 'disabled' : '' }} name="{{ $name }}">
         {{ $slot }}
     </select>
 

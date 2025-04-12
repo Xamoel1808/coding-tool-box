@@ -42,21 +42,29 @@
                                     </tr>
                                     </thead>
                                     <tbody>
+                                        @forelse ($cohorts as $cohort)
                                         <tr>
-                                        <td>
-                                            <div class="flex flex-col gap-2">
-                                                <a class="leading-none font-medium text-sm text-gray-900 hover:text-primary"
-                                                   href="{{ route('cohort.show', 1) }}">
-                                                    Promotion B1
-                                                </a>
-                                                <span class="text-2sm text-gray-700 font-normal leading-3">
-                                                    Cergy
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td>2024-2025</td>
-                                        <td>34</td>
-                                    </tr>
+                                            <td>
+                                                <div class="flex flex-col gap-2">
+                                                    <a class="leading-none font-medium text-sm text-gray-900 hover:text-primary"
+                                                       href="{{ route('cohort.show', $cohort->id) }}">
+                                                        {{ $cohort->name }}
+                                                    </a>
+                                                    <span class="text-2sm text-gray-700 font-normal leading-3">
+                                                        {{ $cohort->description }}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td>{{ date('Y', strtotime($cohort->start_date)) }}-{{ date('Y', strtotime($cohort->end_date)) }}</td>
+                                            <td>{{ $cohort->users_count ?? 0 }}</td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="3" class="text-center py-4">
+                                                Aucune promotion trouvée. Créez-en une à l'aide du formulaire.
+                                            </td>
+                                        </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
                             </div>
@@ -84,17 +92,31 @@
                     </h3>
                 </div>
                 <div class="card-body flex flex-col gap-5">
-                    <x-forms.input name="name" :label="__('Nom')" />
+                    <form action="{{ route('cohort.store') }}" method="POST">
+                        @csrf
+                        
+                        @if($errors->any())
+                            <div class="alert alert-danger">
+                                <ul>
+                                    @foreach($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+                        
+                        <x-forms.input name="name" :label="__('Nom')" value="{{ old('name') }}" required />
 
-                    <x-forms.input name="description" :label="__('Description')" />
+                        <x-forms.input name="description" :label="__('Description')" value="{{ old('description') }}" required />
 
-                    <x-forms.input type="date" name="year" :label="__('Début de l\'année')" placeholder="" />
+                        <x-forms.input type="date" name="start_date" :label="__('Début de l\'année')" value="{{ old('start_date') }}" required />
 
-                    <x-forms.input type="date" name="year" :label="__('Fin de l\'année')" placeholder="" />
+                        <x-forms.input type="date" name="end_date" :label="__('Fin de l\'année')" value="{{ old('end_date') }}" required />
 
-                    <x-forms.primary-button>
-                        {{ __('Valider') }}
-                    </x-forms.primary-button>
+                        <x-forms.primary-button type="submit">
+                            {{ __('Valider') }}
+                        </x-forms.primary-button>
+                    </form>
                 </div>
             </div>
         </div>

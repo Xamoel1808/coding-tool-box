@@ -41,14 +41,28 @@
                                     </tr>
                                     </thead>
                                     <tbody>
+                                        @forelse ($cohort->users as $user)
                                         <tr>
-                                        <td>Doe</td>
-                                        <td>John</td>
-                                        <td>10/02/2000</td>
-                                        <td class="cursor-pointer pointer">
-                                            <i class="ki-filled ki-trash"></i>
-                                        </td>
-                                    </tr>
+                                            <td>{{ $user->last_name }}</td>
+                                            <td>{{ $user->first_name }}</td>
+                                            <td>{{ $user->birth_date ?? 'Non renseigné' }}</td>
+                                            <td>
+                                                <form action="{{ route('cohort.removeStudent', ['cohort' => $cohort->id, 'user' => $user->id]) }}" method="POST" class="inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-danger hover:text-red-700" onclick="return confirm('Êtes-vous sûr de vouloir retirer cet étudiant de la promotion?')">
+                                                        <i class="ki-filled ki-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="4" class="text-center py-4">
+                                                Aucun étudiant dans cette promotion
+                                            </td>
+                                        </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
                             </div>
@@ -76,13 +90,42 @@
                     </h3>
                 </div>
                 <div class="card-body flex flex-col gap-5">
-                    <x-forms.dropdown name="user_id" :label="__('Etudiant')">
-                        <option value="1">Etudiant 1</option>
-                    </x-forms.dropdown>
+                    <form action="{{ route('cohort.addStudent', $cohort->id) }}" method="POST">
+                        @csrf
+                        
+                        @if(session('error'))
+                            <div class="alert alert-danger">
+                                {{ session('error') }}
+                            </div>
+                        @endif
+                        
+                        @if(session('success'))
+                            <div class="alert alert-success">
+                                {{ session('success') }}
+                            </div>
+                        @endif
+                        
+                        @if($errors->any())
+                            <div class="alert alert-danger">
+                                <ul>
+                                    @foreach($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+                        
+                        <x-forms.dropdown name="user_id" :label="__('Etudiant')">
+                            <option value="">Sélectionnez un étudiant</option>
+                            @foreach ($availableStudents ?? [] as $student)
+                                <option value="{{ $student->id }}">{{ $student->last_name }} {{ $student->first_name }}</option>
+                            @endforeach
+                        </x-forms.dropdown>
 
-                    <x-forms.primary-button>
-                        {{ __('Valider') }}
-                    </x-forms.primary-button>
+                        <x-forms.primary-button type="submit">
+                            {{ __('Ajouter') }}
+                        </x-forms.primary-button>
+                    </form>
                 </div>
             </div>
         </div>

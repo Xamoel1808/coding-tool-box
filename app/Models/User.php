@@ -81,4 +81,23 @@ class User extends Authenticatable
             ->withPivot('role')
             ->first();
     }
+
+    /**
+     * Get the groups that belong to the user
+     */
+
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(Group::class, 'users_groups')
+                    ->withTimestamps();
+    }
+    
+    /**
+     * Get the cohorts (promotions) that belong to the user
+     */
+    public function cohorts(): BelongsToMany
+    {
+        return $this->belongsToMany(Cohort::class, 'users_cohorts')
+                    ->withTimestamps();
+    }
 }

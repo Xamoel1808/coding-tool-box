@@ -47,10 +47,11 @@
                                     </tr>
                                     </thead>
                                     <tbody>
+                                        @forelse ($students as $student)
                                         <tr>
-                                            <td>Doe</td>
-                                            <td>John</td>
-                                            <td>12/02/2000</td>
+                                            <td>{{ $student->last_name }}</td>
+                                            <td>{{ $student->first_name }}</td>
+                                            <td>{{ $student->birth_date ? date('d/m/Y', strtotime($student->birth_date)) : 'Non renseigné' }}</td>
                                             <td>
                                                 <div class="flex items-center justify-between">
                                                     <a href="#">
@@ -58,28 +59,22 @@
                                                     </a>
 
                                                     <a class="hover:text-primary cursor-pointer" href="#"
-                                                       data-modal-toggle="#student-modal">
+                                                       data-modal-toggle="#student-modal" 
+                                                       data-student-id="{{ $student->id }}"
+                                                       data-student-firstname="{{ $student->first_name }}"
+                                                       data-student-lastname="{{ $student->last_name }}">
                                                         <i class="ki-filled ki-cursor"></i>
                                                     </a>
                                                 </div>
                                             </td>
                                         </tr>
+                                        @empty
                                         <tr>
-                                            <td>Joe</td>
-                                            <td>Dohn</td>
-                                            <td>02/12/2000</td>
-                                            <td>
-                                                <div class="flex items-center justify-between">
-                                                    <a href="#">
-                                                        <i class="text-danger ki-filled ki-shield-cross"></i>
-                                                    </a>
-                                                    <a class="hover:text-primary cursor-pointer" href="#"
-                                                       data-modal-toggle="#student-modal">
-                                                        <i class="ki-filled ki-cursor"></i>
-                                                    </a>
-                                                </div>
+                                            <td colspan="4" class="text-center py-4">
+                                                Aucun étudiant trouvé. Ajoutez-en un à l'aide du formulaire.
                                             </td>
                                         </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
                             </div>
@@ -107,8 +102,33 @@
                     </h3>
                 </div>
                 <div class="card-body flex flex-col gap-5">
-                    Formulaire à créer
-                    <!-- @todo A compléter -->
+                    <form action="{{ route('student.store') }}" method="POST">
+                        @csrf
+                        
+                        @if($errors->any())
+                            <div class="alert alert-danger">
+                                <ul>
+                                    @foreach($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+                        
+                        <x-forms.input name="last_name" :label="__('Nom')" value="{{ old('last_name') }}" required />
+                        
+                        <x-forms.input name="first_name" :label="__('Prénom')" value="{{ old('first_name') }}" required />
+                        
+                        <x-forms.input name="email" type="email" :label="__('Email')" value="{{ old('email') }}" required />
+                        
+                        <x-forms.input name="birth_date" type="date" :label="__('Date de naissance')" value="{{ old('birth_date') }}" />
+                        
+                        <x-forms.input name="password" type="password" :label="__('Mot de passe')" required />
+
+                        <x-forms.primary-button type="submit">
+                            {{ __('Ajouter') }}
+                        </x-forms.primary-button>
+                    </form>
                 </div>
             </div>
         </div>

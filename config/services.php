@@ -34,5 +34,11 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    
+    'ai' => [
+        'url' => env('AI_API_URL', 'https://api.openai.com/v1'),
+        'key' => env('AI_API_KEY'),
+        'model' => env('AI_MODEL', 'gpt-4'),
+    ],
 
 ];
