@@ -100,4 +100,12 @@ class User extends Authenticatable
         return $this->belongsToMany(Cohort::class, 'users_cohorts')
                     ->withTimestamps();
     }
+
+    /**
+     * Get the grades for the user
+     */
+    public function grades(): HasMany
+    {
+        return $this->hasMany(Grade::class);
+    }
 }

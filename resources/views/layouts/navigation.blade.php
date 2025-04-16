@@ -15,6 +15,22 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    
+                    @php
+                        $userRole = auth()->user()->school()->pivot->role ?? null;
+                    @endphp
+
+                    @if($userRole === 'admin' || $userRole === 'teacher')
+                        <x-nav-link :href="route('grades.index')" :active="request()->routeIs('grades.*') && !request()->routeIs('grades.student')">
+                            Gestion des notes
+                        </x-nav-link>
+                    @endif
+
+                    @if($userRole === 'student')
+                        <x-nav-link :href="route('grades.student')" :active="request()->routeIs('grades.student')">
+                            Bilan de compétences
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -70,6 +86,22 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            
+            @php
+                $userRole = auth()->user()->school()->pivot->role ?? null;
+            @endphp
+
+            @if($userRole === 'admin' || $userRole === 'teacher')
+                <x-responsive-nav-link :href="route('grades.index')" :active="request()->routeIs('grades.*') && !request()->routeIs('grades.student')">
+                    Gestion des notes
+                </x-responsive-nav-link>
+            @endif
+
+            @if($userRole === 'student')
+                <x-responsive-nav-link :href="route('grades.student')" :active="request()->routeIs('grades.student')">
+                    Bilan de compétences
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

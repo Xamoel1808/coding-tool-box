@@ -6,22 +6,34 @@ use App\Models\Cohort;
 use App\Models\Group;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class GroupController extends Controller
 {
     public function index()
     {
-        $cohorts = Cohort::all();
+        // Récupérer l'utilisateur actuel et son rôle
+        $user = Auth::user();
+        $userRole = $user->school()->pivot->role ?? null;
         
-        // Récupérer tous les groupes avec leurs utilisateurs et les regrouper par promotion
-        $groupsByCohort = Group::with(['users', 'cohort'])->get()->groupBy('cohort_id');
-        
-        return view('pages.groups.index', compact('cohorts', 'groupsByCohort'));
+        // Différent comportement selon le rôle
+        if ($userRole === 'student') {
+            // Pour les étudiants, montrer uniquement leurs groupes
+            $userGroups = $user->groups()->with(['cohort'])->get();
+            return view('pages.groups.student_index', compact('userGroups'));
+        } else {
+            // Pour les enseignants et les admins, montrer tous les groupes
+            $cohorts = Cohort::all();
+            $groupsByCohort = Group::with(['users', 'cohort'])->get()->groupBy('cohort_id');
+            return view('pages.groups.index', compact('cohorts', 'groupsByCohort'));
+        }
     }
 
     public function generate(Request $request)
     {
+        // Le middleware est maintenant appliqué au niveau des routes
+        
         $request->validate([
             'cohort_id' => 'required|exists:cohorts,id',
             'group_size' => 'required|integer|min:2',

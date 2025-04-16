@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Cohort extends Model
 {
@@ -17,5 +18,13 @@ class Cohort extends Model
     {
         return $this->belongsToMany(User::class, 'users_cohorts')
                     ->withTimestamps();
+    }
+    
+    /**
+     * Get the grades for this cohort
+     */
+    public function grades(): HasMany
+    {
+        return $this->hasMany(Grade::class);
     }
 }

@@ -55,7 +55,7 @@
                         <!-- Container -->
                         <div class="container-fixed flex items-center justify-between flex-wrap gap-3">
                             <div class="flex items-center flex-wrap gap-1 lg:gap-5">
-                                {{ $header }}
+                                {{ $header ?? '' }}
                             </div>
                         </div>
                         <!-- End of Container -->
@@ -64,7 +64,7 @@
                     <!-- End of Toolbar -->
                     <!-- Container -->
                     <div class="container-fixed">
-                        {{ $slot }}
+                        {{ $slot ?? '' }}
                     </div>
                     <!-- End of Container -->
                 </main>
