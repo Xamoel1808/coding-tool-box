@@ -27,7 +27,6 @@
                                 <div class="bg-white p-3 rounded shadow relative group">
                                     <div class="flex justify-between items-start">
                                         <h4 class="font-semibold text-break mb-2 pr-6">{{ $item->name }}</h4>
-                                        @if(!$isStudent)
                                         <form action="{{ route('retro.item.remove', $item->id) }}" method="POST" class="opacity-0 group-hover:opacity-100 transition-opacity">
                                             @csrf
                                             @method('DELETE')
@@ -37,7 +36,6 @@
                                                 </svg>
                                             </button>
                                         </form>
-                                        @endif
                                     </div>
                                     <p class="text-sm text-gray-600 break-words overflow-hidden" style="word-wrap: break-word; max-height: 150px; overflow-y: auto;">{{ $item->description }}</p>
                                 </div>

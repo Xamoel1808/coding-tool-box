@@ -57,15 +57,16 @@ Route::middleware('auth')->group(function () {
         // Routes accessibles à tous les utilisateurs authentifiés (étudiants inclus)
         Route::get('retros', [RetroController::class, 'index'])->name('retro.index');
         Route::post('retros/columns/{column}/items', [RetroController::class, 'addItem'])->name('retro.column.addItem');
-
+        Route::delete('retros/items/{item}', [RetroController::class, 'removeItem'])->name('retro.item.remove');
+        
         // Routes accessibles uniquement aux enseignants et administrateurs
         Route::middleware(EnsureUserIsTeacherOrAdmin::class)->group(function () {
             Route::get('retros/create', [RetroController::class, 'create'])->name('retro.create');
             Route::post('retros', [RetroController::class, 'store'])->name('retro.store');
             Route::delete('retros/{retro}', [RetroController::class, 'destroy'])->name('retro.destroy');
-            Route::delete('retros/items/{item}', [RetroController::class, 'removeItem'])->name('retro.item.remove');
         });
-
+        
+        // Important: cette route doit être placée après retros/create pour éviter les conflits
         Route::get('retros/{retro}', [RetroController::class, 'show'])->name('retro.show');
 
         // Common life

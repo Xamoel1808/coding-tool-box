@@ -204,7 +204,27 @@ class RetroController extends Controller
      */
     public function removeItem(Request $request, RetroData $item)
     {
-        $retroId = $item->column->retro_id;
+        $retroColumn = $item->column;
+        $retro = $retroColumn->retro;
+        $retroId = $retro->id;
+        
+        $user = Auth::user();
+        $userRole = $user->school()->pivot->role ?? null;
+
+        // Vérifier que l'utilisateur a accès à cette rétrospective
+        if (!$userRole) {
+            abort(403, 'Vous n\'êtes pas autorisé à supprimer des retours.');
+        } elseif ($userRole === 'teacher' && $retro->user_id !== $user->id) {
+            // Les enseignants ne peuvent supprimer des retours que dans leurs propres rétrospectives
+            abort(403, 'Vous ne pouvez pas supprimer de retours dans cette rétrospective.');
+        } elseif (!in_array($userRole, ['admin', 'teacher'])) {
+            // Pour les étudiants, vérifier qu'ils appartiennent à la promotion
+            $userCohortIds = $user->cohorts()->pluck('cohorts.id')->toArray();
+            if (!in_array($retro->cohort_id, $userCohortIds)) {
+                abort(403, 'Vous n\'êtes pas autorisé à supprimer des retours dans cette rétrospective.');
+            }
+        }
+
         $item->delete();
 
         if ($request->ajax()) {
