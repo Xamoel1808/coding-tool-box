@@ -16,29 +16,41 @@
                         <h3 class="card-title">Liste des enseignants</h3>
                         <div class="input input-sm max-w-48">
                             <i class="ki-filled ki-magnifier"></i>
-                            <input placeholder="Rechercher un enseignant" type="text"/>
+                            <input id="search-teachers" data-table="teachers-table" data-search="1,2" placeholder="Rechercher un enseignant" type="text" aria-label="Rechercher un enseignant" />
                         </div>
                     </div>
                     <div class="card-body">
                         <div data-datatable="true" data-datatable-page-size="5">
-                            <div class="scrollable-x-auto">
-                                <table class="table table-border" data-datatable-table="true">
+                            <form method="GET" class="mb-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                                <div class="input input-sm max-w-48" role="search">
+                                    <i class="ki-filled ki-magnifier"></i>
+                                    <input
+                                        name="search"
+                                        type="text"
+                                        value="{{ request('search', '') }}"
+                                        placeholder="Rechercher un enseignant"
+                                        class="w-full" />
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <label for="perpage" class="flex items-center gap-2">
+                                        Afficher
+                                        <select id="perpage" name="perpage" class="select select-sm w-16" onchange="this.form.submit()">
+                                            @foreach([5,10,25,50] as $size)
+                                                <option value="{{ $size }}" {{ request('perpage', 10)==$size ? 'selected' : '' }}>{{ $size }}</option>
+                                            @endforeach
+                                        </select>
+                                        par page
+                                    </label>
+                                </div>
+                            </form>
+                            <div class="overflow-x-auto scrollable-x-auto">
+                                <table class="table table-border">
                                     <thead>
-                                    <tr>
-                                        <th class="min-w-[135px]">
-                                            <span class="sort asc">
-                                                 <span class="sort-label">Nom</span>
-                                                 <span class="sort-icon"></span>
-                                            </span>
-                                        </th>
-                                        <th class="min-w-[135px]">
-                                            <span class="sort">
-                                                <span class="sort-label">Prénom</span>
-                                                <span class="sort-icon"></span>
-                                            </span>
-                                        </th>
-                                        <th class="w-[70px]"></th>
-                                    </tr>
+                                        <tr>
+                                            <th class="min-w-[135px]"><span class="sort asc"><span class="sort-label">Nom</span><span class="sort-icon"></span></span></th>
+                                            <th class="min-w-[135px]"><span class="sort"><span class="sort-label">Prénom</span><span class="sort-icon"></span></span></th>
+                                            <th class="w-[70px]"></th>
+                                        </tr>
                                     </thead>
                                     <tbody>
                                         @forelse ($teachers as $teacher)
@@ -63,24 +75,14 @@
                                         </tr>
                                         @empty
                                         <tr>
-                                            <td colspan="3" class="text-center py-4">
-                                                Aucun enseignant trouvé. Ajoutez-en un à l'aide du formulaire.
-                                            </td>
+                                            <td colspan="3" class="text-center py-4">Aucun enseignant trouvé.</td>
                                         </tr>
                                         @endforelse
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="card-footer justify-center md:justify-between flex-col md:flex-row gap-5 text-gray-600 text-2sm font-medium">
-                                <div class="flex items-center gap-2 order-2 md:order-1">
-                                    Show
-                                    <select class="select select-sm w-16" data-datatable-size="true" name="perpage"></select>
-                                    per page
-                                </div>
-                                <div class="flex items-center gap-4 order-1 md:order-2">
-                                    <span data-datatable-info="true"></span>
-                                    <div class="pagination" data-datatable-pagination="true"></div>
-                                </div>
+                            <div class="mt-4">
+                                {{ $teachers->links() }}
                             </div>
                         </div>
                     </div>

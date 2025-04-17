@@ -1,0 +1,11 @@
+[90m= [39m[34;4mApp\Models\Cohort[39;24m {#5240
+    [34mid[39m: [35m1[39m,
+    [34mschool_id[39m: [35m1[39m,
+    [34mname[39m: "[32mCohort 2025[39m",
+    [34mdescription[39m: "[32mTest cohort for 2025[39m",
+    [34mstart_date[39m: "[32m2025-03-16 20:24:53[39m",
+    [34mend_date[39m: "[32m2026-03-16 20:24:53[39m",
+    [34mcreated_at[39m: "[32m2025-04-16 20:24:53[39m",
+    [34mupdated_at[39m: "[32m2025-04-16 20:24:53[39m",
+  }
+

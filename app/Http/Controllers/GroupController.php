@@ -5,12 +5,27 @@ namespace App\Http\Controllers;
 use App\Models\Cohort;
 use App\Models\Group;
 use App\Models\User;
+use App\Models\UserGroup;
+use App\Services\AIHomogeneousGroupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class GroupController extends Controller
 {
+    /**
+     * @var AIHomogeneousGroupService
+     */
+    protected $aiService;
+
+    /**
+     * Constructor
+     */
+    public function __construct(AIHomogeneousGroupService $aiService)
+    {
+        $this->aiService = $aiService;
+    }
+
     public function index()
     {
         // Récupérer l'utilisateur actuel et son rôle
@@ -25,7 +40,13 @@ class GroupController extends Controller
         } else {
             // Pour les enseignants et les admins, montrer tous les groupes
             $cohorts = Cohort::all();
-            $groupsByCohort = Group::with(['users', 'cohort'])->get()->groupBy('cohort_id');
+            $groups = Group::with(['users', 'cohort'])
+                ->orderBy('cohort_id')
+                ->orderBy('batch_name')
+                ->orderBy('name')
+                ->get();
+            // Group by cohort, then by batch_name
+            $groupsByCohort = $groups->groupBy(['cohort_id', 'batch_name']);
             return view('pages.groups.index', compact('cohorts', 'groupsByCohort'));
         }
     }
@@ -37,79 +58,141 @@ class GroupController extends Controller
         $request->validate([
             'cohort_id' => 'required|exists:cohorts,id',
             'group_size' => 'required|integer|min:2',
+            'batch_name' => 'required|string|max:255',
             'replace_existing' => 'sometimes|boolean',
         ]);
+         
+        // Retrieve parameters
+        $cohortId = $request->input('cohort_id');
+        $batchName = $request->input('batch_name');
+        $groupSize = $request->input('group_size');
 
-        $cohort = Cohort::findOrFail($request->cohort_id);
-        $students = $cohort->users;
-        
-        // Vérifier si des groupes existent déjà pour cette promotion
-        $existingGroups = Group::where('cohort_id', $cohort->id)->exists();
-        if ($existingGroups && !$request->has('replace_existing')) {
-            return redirect()->route('groups.index')
-                ->with('info', 'Des groupes existent déjà pour cette promotion. Aucun nouveau groupe n\'a été créé.');
-        }
+         // Récupérer la promotion
+         $cohort = Cohort::findOrFail($cohortId);
 
-        // Mélange aléatoire des étudiants
-        $students = $students->shuffle()->values();
-
-        $groupSize = $request->group_size;
-        $groups = collect();
-        
-        // Calculate how many groups we need based on number of students and group size
-        $groupCount = (int) ceil($students->count() / $groupSize);
-
-        // Create empty group objects
-        for ($i = 0; $i < $groupCount; $i++) {
-            $group = new Group();
-            $group->name = 'Groupe ' . ($i + 1);
-            $group->cohort_id = $cohort->id;
-            $group->is_auto_generated = true;
-            $group->generation_params = [
-                'group_size' => $groupSize,
-                'date_generated' => now()->toDateTimeString()
-            ];
-            $groups->push($group);
-        }
-
-        // Préparation des user IDs pour chaque groupe
-        $groupUserIds = [];
-        
-        // Instead of distributing one by one using the modulo,
-        // create chunks of groupSize students
-        $studentChunks = $students->chunk($groupSize);
-        
-        // Assign each chunk to a group
-        foreach ($studentChunks as $index => $chunk) {
-            if ($index < $groupCount) {
-                $groupUserIds[$index] = $chunk->pluck('id');
-            } else {
-                // If we have more chunks than groups, add remaining students to the last group
-                $groupUserIds[$groupCount-1] = $groupUserIds[$groupCount-1]->merge($chunk->pluck('id'));
-            }
-        }
-
-        // Enregistrement en base
-        DB::transaction(function () use ($groups, $groupUserIds, $cohort, $request) {
-            // Suppression des anciens groupes de la cohorte seulement si l'option est activée
-            if ($request->has('replace_existing')) {
-                Group::where('cohort_id', $cohort->id)->delete();
+         try {
+             // Démarrer une transaction pour assurer l'intégrité des données
+             DB::beginTransaction();
+             
+             // Suppression des anciens groupes si l'option est activée
+             if ($request->has('replace_existing')) {
+                 Group::where('cohort_id', $cohort->id)->delete();
+             }
+             
+             // Génération des groupes via IA uniquement
+             $aiGroups = $this->aiService->generateGroups($cohort, $groupSize);
+             if (!$aiGroups) {
+                 // Annulation et message d'erreur si l'IA a échoué
+                 DB::rollBack();
+                 return redirect()->back()->withErrors(['error' => 'La génération des groupes via IA a échoué.'])->withInput();
+             }
+             // Enregistrement des groupes générés par l'IA
+             $groups = $this->saveAIGeneratedGroups($aiGroups, $cohort, $batchName);
+             
+            if (empty($groups)) {
+                return redirect()->back()->withErrors(['error' => 'Aucun étudiant trouvé dans cette promotion.']);
             }
             
-            foreach ($groups as $i => $group) {
-                $group->save();
+            // Validation de la transaction
+            DB::commit();
+            
+            // Rediriger vers la page d'index avec un message de succès
+            return redirect()->route('groups.index')
+                ->with('success', 'Fournée de groupes "' . $batchName . '" créée avec succès.');
                 
-                // Make sure groupUserIds[$i] exists before syncing
-                if (isset($groupUserIds[$i])) {
-                    $group->users()->sync($groupUserIds[$i]);
-                }
+         } catch (\Exception $e) {
+             // Annulation de la transaction en cas d'erreur
+             DB::rollBack();
+             
+             // Log de l'erreur
+             logger()->error('Erreur lors de la création des groupes', [
+                 'error' => $e->getMessage(),
+                 'trace' => $e->getTraceAsString()
+             ]);
+             
+             return redirect()->back()
+                 ->withErrors(['error' => 'Une erreur est survenue lors de la création des groupes. Veuillez réessayer.'])
+                 ->withInput();
+         }
+    }
+
+    /**
+     * Supprimer une fournée de groupes pour une promotion donnée
+     */
+    public function deleteBatch(Request $request)
+    {
+        $request->validate([
+            'cohort_id' => 'required|exists:cohorts,id',
+            'batch_name' => 'nullable|string|max:255',
+        ]);
+        $cohortId = $request->input('cohort_id');
+        $batchName = $request->input('batch_name');
+
+        $query = Group::where('cohort_id', $cohortId);
+        if ($batchName !== null) {
+            $query->where('batch_name', $batchName);
+        } else {
+            $query->whereNull('batch_name');
+        }
+        $groups = $query->get();
+        foreach ($groups as $group) {
+            $group->users()->detach();
+            $group->delete();
+        }
+        return redirect()->route('groups.index')->with('info', 'Fournée supprimée avec succès.');
+    }
+
+    /**
+     * Enregistre les groupes générés par l'IA
+     * 
+     * @param array $aiGroups
+     * @param Cohort $cohort
+     * @param string $batchName
+     * @return array
+     */
+    private function saveAIGeneratedGroups(array $aiGroups, Cohort $cohort, string $batchName): array
+    {
+        $savedGroups = [];
+        
+        foreach ($aiGroups as $index => $groupData) {
+            $group = Group::create([
+                'cohort_id' => $cohort->id,
+                'batch_name' => $batchName,
+                'name' => 'Groupe IA #' . ($index + 1),
+                'description' => 'Groupe créé automatiquement par l\'IA pour obtenir une répartition homogène des compétences',
+                'is_auto_generated' => true,
+                'generation_params' => [
+                    'ai_generated' => true,
+                    'date_generated' => now()->toDateTimeString(),
+                ]
+            ]);
+            
+            // Ajouter chaque étudiant au groupe
+            $totalSkill = 0;
+            $count = 0;
+            
+            // Normalize members: AI format ['members'=>...] or fallback plain array
+            $members = $groupData['members'] ?? $groupData;
+            foreach ($members as $member) {
+                UserGroup::create([
+                    'user_id' => $member['id'],
+                    'group_id' => $group->id
+                ]);
+                
+                $totalSkill += $member['skill'] ?? 0;
+                $count++;
             }
-        });
-
-        // Rafraîchir les groupes avec les utilisateurs
-        $groups = Group::where('cohort_id', $cohort->id)->with('users')->get();
-
-        $cohorts = Cohort::all();
-        return view('pages.groups.index', compact('cohorts', 'groups'));
+            
+            // Calculer la moyenne des compétences
+            $averageSkill = $count > 0 ? round($totalSkill / $count, 2) : 0;
+            
+            // Mettre à jour la description du groupe avec la moyenne
+            $group->description .= " (moyenne des compétences: $averageSkill/20)";
+            $group->save();
+            
+            $savedGroups[] = $group;
+        }
+        
+        return $savedGroups;
     }
 }

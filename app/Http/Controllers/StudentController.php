@@ -8,16 +8,28 @@ use Illuminate\Support\Facades\Hash;
 
 class StudentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Récupérer tous les utilisateurs avec le rôle "student"
-        $students = User::join('users_schools', 'users.id', '=', 'users_schools.user_id')
+        $search = $request->query('search');
+        $perPage = $request->query('perpage', 5);
+
+        $query = User::join('users_schools', 'users.id', '=', 'users_schools.user_id')
             ->where('users_schools.role', 'student')
-            ->select('users.*')
-            ->get();
+            ->select('users.*');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('users.last_name', 'like', "%{$search}%")
+                  ->orWhere('users.first_name', 'like', "%{$search}%");
+            });
+        }
+
+        $students = $query->paginate($perPage)->appends($request->only('search', 'perpage'));
 
         return view('pages.students.index', [
-            'students' => $students
+            'students' => $students,
+            'search' => $search,
+            'perPage' => $perPage,
         ]);
     }
 

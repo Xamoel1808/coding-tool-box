@@ -36,9 +36,8 @@ return [
     ],
     
     'ai' => [
-        'url' => env('AI_API_URL', 'https://api.openai.com/v1'),
+        'url' => env('AI_API_URL') . '/models/' . env('AI_MODEL', 'gemini-2.0-flash-lite') . ':generateContent',
         'key' => env('AI_API_KEY'),
-        'model' => env('AI_MODEL', 'gpt-4'),
     ],
 
 ];

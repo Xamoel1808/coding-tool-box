@@ -70,9 +70,9 @@
                             </div>
                             <div class="card-footer justify-center md:justify-between flex-col md:flex-row gap-5 text-gray-600 text-2sm font-medium">
                                 <div class="flex items-center gap-2 order-2 md:order-1">
-                                    Show
+                                    Afficher
                                     <select class="select select-sm w-16" data-datatable-size="true" name="perpage"></select>
-                                    per page
+                                    par page
                                 </div>
                                 <div class="flex items-center gap-4 order-1 md:order-2">
                                     <span data-datatable-info="true"></span>

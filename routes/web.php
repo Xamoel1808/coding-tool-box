@@ -9,8 +9,6 @@ use App\Http\Controllers\RetroController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\KnowledgeController;
 use App\Http\Controllers\GroupController;
-use App\Http\Controllers\HomogeneousGroupController;
-use App\Http\Controllers\TeacherController;
 use App\Http\Middleware\EnsureUserIsTeacherOrAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -47,16 +45,12 @@ Route::middleware('auth')->group(function () {
 
         // Groups - Route accessible à tous les utilisateurs authentifiés
         Route::get('groups', [GroupController::class, 'index'])->name('groups.index');
-        
-        // Groups - Routes accessibles uniquement aux enseignants et administrateurs
-        Route::middleware('teacher-admin')->group(function () {
-            Route::post('groups/generate', [GroupController::class, 'generate'])->name('groups.generate');
-        });
+        // Groups - Route pour supprimer une fournée de groupes
+        Route::delete('groups/batch/delete', [GroupController::class, 'deleteBatch'])->name('groups.batch.delete');
 
-        // Homogeneous Groups (Admin only)
-        Route::middleware('admin')->group(function () {
-            Route::get('/groups/homogeneous', [HomogeneousGroupController::class, 'index'])->name('groups.homogeneous');
-            Route::post('/groups/homogeneous', [HomogeneousGroupController::class, 'createHomogeneousGroups'])->name('groups.homogeneous.create');
+        // Groups - Routes accessibles uniquement aux enseignants et administrateurs
+        Route::middleware(EnsureUserIsTeacherOrAdmin::class)->group(function () {
+            Route::post('groups/generate', [GroupController::class, 'generate'])->name('groups.generate');
         });
 
         // Retro

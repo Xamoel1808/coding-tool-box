@@ -24,6 +24,10 @@
                 <input type="number" min="2" max="50" id="group_size" name="group_size" class="input w-full mt-1" required>
             </div>
             <div>
+                <label for="batch_name" class="block text-sm font-medium text-gray-700">Nom de la fournée</label>
+                <input type="text" id="batch_name" name="batch_name" value="{{ old('batch_name') }}" class="input w-full mt-1" maxlength="255" placeholder="Entrez un nom pour cette fournée" required>
+            </div>
+            <div>
                 <button type="submit" class="btn btn-primary w-full">Générer les groupes</button>
             </div>
         </form>
@@ -37,65 +41,94 @@
         </div>
     @endif
 
-    @isset($groups)
-        <div class="mt-8 max-w-2xl mx-auto">
-            <h2 class="text-lg font-semibold mb-4">Groupes générés</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                @foreach($groups as $group)
-                    <div class="p-4 border rounded shadow">
-                        <h3 class="font-bold mb-2">{{ $group->name }}</h3>
-                        <ul class="list-disc pl-5">
-                            @foreach($group->users as $user)
-                                <li>{{ $user->fullName }} (note: {{ $user->competence_score ?? 'N/A' }})</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endforeach
+    @if(session('success'))
+        <div class="mt-4 max-w-lg mx-auto">
+            <div class="alert alert-success">
+                {{ session('success') }}
             </div>
         </div>
-    @endisset
+    @endif
 
     <!-- Affichage des groupes existants par promotion -->
     @isset($groupsByCohort)
         <div class="mt-12">
             <h2 class="text-xl font-bold mb-6 text-center">Groupes existants par promotion</h2>
-            
-            @forelse($groupsByCohort as $cohortId => $cohortGroups)
+            @forelse($groupsByCohort as $cohortId => $batches)
                 @php
                     $cohortName = $cohorts->where('id', $cohortId)->first()->name ?? 'Promotion inconnue';
                 @endphp
-                
                 <div class="mb-8">
                     <h3 class="text-lg font-semibold mb-4 border-b pb-2">{{ $cohortName }}</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        @foreach($cohortGroups as $group)
-                            <div class="card p-4">
-                                <div class="card-header pb-2">
-                                    <h4 class="card-title text-primary">{{ $group->name }}</h4>
-                                    <p class="text-xs text-gray-500">
-                                        @if(isset($group->generation_params['date_generated']))
-                                            Créé le: {{ \Carbon\Carbon::parse($group->generation_params['date_generated'])->format('d/m/Y H:i') }}
-                                        @endif
-                                    </p>
-                                </div>
-                                <div class="card-body">
-                                    @if($group->users->count() > 0)
-                                        <ul class="list-disc pl-5">
-                                            @foreach($group->users as $user)
-                                                <li>{{ $user->last_name }} {{ $user->first_name }} 
-                                                    @if(isset($user->competence_score))
-                                                        <span class="text-xs text-gray-500">(niveau: {{ $user->competence_score }})</span>
-                                                    @endif
-                                                </li>
-                                            @endforeach
-                                        </ul>
-                                    @else
-                                        <p class="text-gray-500 italic">Aucun étudiant dans ce groupe</p>
-                                    @endif
-                                </div>
+                    @foreach($batches as $batchName => $groups)
+                        <div class="mb-4 border rounded p-3 bg-gray-50">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold">Fournée : {{ $batchName ?: '(Sans nom)' }}</span>
+                                <form method="POST" action="{{ route('groups.batch.delete') }}" onsubmit="return confirm('Supprimer cette fournée ?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <input type="hidden" name="cohort_id" value="{{ $cohortId }}">
+                                    <input type="hidden" name="batch_name" value="{{ $batchName }}">
+                                    <button type="submit" class="btn btn-danger btn-xs">Supprimer la fournée</button>
+                                </form>
                             </div>
-                        @endforeach
-                    </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                @foreach($groups as $group)
+                                    <div class="card p-4">
+                                        <div class="card-header pb-2">
+                                            <h4 class="card-title text-primary">{{ $group->name }}</h4>
+                                            <p class="text-xs text-gray-500">
+                                                @if(isset($group->generation_params['date_generated']))
+                                                    Créé le: {{ \Carbon\Carbon::parse($group->generation_params['date_generated'])->format('d/m/Y H:i') }}
+                                                @endif
+                                            </p>
+                                            @php
+                                                $totalNotes = 0;
+                                                $nbElevesAvecNote = 0;
+                                                
+                                                foreach ($group->users as $u) {
+                                                    $grade = $u->grades->first();
+                                                    $note = $grade ? $grade->value : ($u->competence_score ?? null);
+                                                    
+                                                    if ($note !== null) {
+                                                        $totalNotes += $note;
+                                                        $nbElevesAvecNote++;
+                                                    }
+                                                }
+                                                
+                                                $avg = $nbElevesAvecNote > 0 ? round($totalNotes / $nbElevesAvecNote, 2) : null;
+                                            @endphp
+                                            @if($avg !== null)
+                                                <p class="text-xs font-semibold {{ $avg > 14 ? 'text-green-600' : ($avg > 10 ? 'text-blue-600' : 'text-red-600') }}">
+                                                    Moyenne du groupe : {{ $avg }}/20
+                                                </p>
+                                            @endif
+                                        </div>
+                                        <div class="card-body">
+                                            @if($group->users->count() > 0)
+                                                <ul class="list-disc pl-5">
+                                                    @foreach($group->users as $user)
+                                                        <li>{{ $user->last_name }} {{ $user->first_name }}
+                                                            @php
+                                                                $grade = $user->grades->first();
+                                                                $note = $grade ? $grade->value : ($user->competence_score ?? null);
+                                                            @endphp
+                                                            @if($note !== null)
+                                                                <span class="text-xs font-semibold {{ $note > 14 ? 'text-green-600' : ($note > 10 ? 'text-blue-600' : 'text-red-600') }}">
+                                                                    ({{ $note }}/20)
+                                                                </span>
+                                                            @endif
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            @else
+                                                <p class="text-gray-500 italic">Aucun étudiant dans ce groupe</p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
             @empty
                 <p class="text-center text-gray-500">Aucun groupe n'a encore été créé</p>

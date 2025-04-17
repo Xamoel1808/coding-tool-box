@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Group extends Model
 {
     protected $table = 'groups';
-    protected $fillable = ['cohort_id', 'name', 'description', 'is_auto_generated', 'generation_params'];
+    protected $fillable = ['cohort_id', 'batch_name', 'name', 'description', 'is_auto_generated', 'generation_params'];
     protected $casts = [
         'is_auto_generated' => 'boolean',
         'generation_params' => 'array',

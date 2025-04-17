@@ -8,17 +8,26 @@ use Illuminate\Support\Facades\Hash;
 
 class TeacherController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Récupérer tous les utilisateurs avec le rôle "teacher"
-        $teachers = User::join('users_schools', 'users.id', '=', 'users_schools.user_id')
-            ->where('users_schools.role', 'teacher')
-            ->select('users.*')
-            ->get();
+        $search = $request->query('search');
+        $perPage = $request->query('perpage', 10);
 
-        return view('pages.teachers.index', [
-            'teachers' => $teachers
-        ]);
+        $query = User::join('users_schools', 'users.id', '=', 'users_schools.user_id')
+            ->where('users_schools.role', 'teacher')
+            ->select('users.*');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('users.last_name', 'like', "%{$search}%")
+                  ->orWhere('users.first_name', 'like', "%{$search}%");
+            });
+        }
+
+        $teachers = $query->paginate($perPage)
+            ->appends($request->only('search', 'perpage'));
+
+        return view('pages.teachers.index', ['teachers' => $teachers]);
     }
 
     public function store(Request $request)

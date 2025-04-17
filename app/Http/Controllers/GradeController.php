@@ -14,26 +14,36 @@ class GradeController extends Controller
     /**
      * Affiche la liste des notes pour les enseignants et admins
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Récupérer toutes les promotions
+        $search = $request->query('search');
+        $perPage = $request->query('perpage', 10);
+
+        // Filter grades by student name when searching
+        $gradesQuery = Grade::with(['user', 'cohort', 'teacher'])
+            ->when($search, function ($q, $search) {
+                return $q->whereHas('user', function ($u) use ($search) {
+                    $u->where('first_name', 'like', "%{$search}%")
+                      ->orWhere('last_name', 'like', "%{$search}%");
+                });
+            });
+
+        $grades = $gradesQuery->paginate($perPage)
+            ->appends($request->only('search', 'perpage'));
+
         $cohorts = Cohort::all();
-        
-        // Récupérer tous les étudiants qui ont des notes
         $students = User::join('users_schools', 'users.id', '=', 'users_schools.user_id')
             ->where('users_schools.role', 'student')
-            ->join('grades', 'users.id', '=', 'grades.user_id')
             ->select('users.*')
             ->distinct()
             ->get();
-            
-        // Récupérer toutes les notes avec relations
-        $grades = Grade::with(['user', 'cohort', 'teacher'])->get();
-        
+
         return view('pages.grades.index', [
             'cohorts' => $cohorts,
             'students' => $students,
-            'grades' => $grades
+            'grades' => $grades,
+            'search' => $search,
+            'perPage' => $perPage,
         ]);
     }
 
