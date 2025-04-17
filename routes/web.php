@@ -54,7 +54,14 @@ Route::middleware('auth')->group(function () {
         });
 
         // Retro
-        route::get('retros', [RetroController::class, 'index'])->name('retro.index');
+        // Retrospectives - accessible only to teachers and admins
+        Route::middleware(EnsureUserIsTeacherOrAdmin::class)->group(function () {
+            Route::get('retros', [RetroController::class, 'index'])->name('retro.index');
+            Route::get('retros/create', [RetroController::class, 'create'])->name('retro.create');
+            Route::post('retros', [RetroController::class, 'store'])->name('retro.store');
+            Route::get('retros/{retro}', [RetroController::class, 'show'])->name('retro.show');
+            Route::delete('retros/{retro}', [RetroController::class, 'destroy'])->name('retro.destroy');
+        });
 
         // Common life
         Route::get('common-life', [CommonLifeController::class, 'index'])->name('common-life.index');
