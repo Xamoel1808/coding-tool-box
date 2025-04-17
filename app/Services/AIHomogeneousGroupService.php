@@ -45,6 +45,7 @@ class AIHomogeneousGroupService
             }
         }
 
+        $studentsCount = $students->count(); 
         // Appel à l'API Gemini v1beta2
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
@@ -58,11 +59,17 @@ class AIHomogeneousGroupService
 
 INSTRUCTIONS:
 1. Répartis TOUS les étudiants de la liste en groupes de $maxStudentsPerGroup membres maximum.
-2. Aucun étudiant ne doit être oublié ou laissé de côté.
+2. Aucun étudiant ne doit être oublié ou laissé de côté. VÉRIFIE que le nombre total d'étudiants dans les groupes retournés correspond au nombre total d'étudiants fournis.
 3. Les groupes doivent être les plus homogènes possibles (moyenne de compétences similaire entre tous les groupes).
 4. Évite les groupes incomplets quand c'est possible (préfère des groupes complets).
-5. Si le nombre d'étudiants n'est pas divisible par $maxStudentsPerGroup, répartis les étudiants restants dans les groupes existants.
+5. CRITICAL: Si le nombre total d'étudiants ($studentsCount) n'est pas un multiple exact de $maxStudentsPerGroup, TU DOIS absolument assigner TOUS les étudiants. Crée des groupes de $maxStudentsPerGroup et place le ou les étudiants restants soit dans un groupe plus petit séparé, soit en les ajoutant à des groupes existants (créant des groupes de taille $maxStudentsPerGroup + 1), tout en maintenant l'homogénéité. NE LAISSE AUCUN ÉTUDIANT SANS GROUPE.
 6. Si possible, utilise l'historique des groupes pour éviter de mettre ensemble des étudiants qui ont déjà travaillé ensemble.
+7. VÉRIFICATION FINALE: Avant de retourner le JSON, recompte les étudiants dans tous les groupes générés et assure-toi que le total est égal à $studentsCount.
+8. AVANT DE RETOURNER, valide que :
+    - La sortie est un JSON valide.
+    - Chaque ID étudiant fourni apparaît exactement une fois.
+    - Si la validation échoue, retourne exactement : {\"error\": \"validation_failed\", \"missing_ids\": [...liste des IDs manquants...]}
+
 
 FORMAT DE RÉPONSE:
 Retourne un objet JSON au format précis suivant:
