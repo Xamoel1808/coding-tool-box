@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Cohort;
 use App\Models\Retro;
+use App\Models\RetroColumn;
+use App\Models\RetroData;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,17 +20,34 @@ class RetroController extends Controller
         $user = Auth::user();
         $userRole = $user->school()->pivot->role ?? null;
 
+        // Base query with eager loading
         $query = Retro::with(['cohort', 'user']);
 
-        if ($userRole === 'teacher') {
+        // Filtrer selon le rôle
+        if ($userRole === 'admin') {
+            // Les admins voient toutes les rétrospectives
+        } elseif ($userRole === 'teacher') {
+            // Les enseignants voient seulement leurs rétrospectives
             $query->where('user_id', $user->id);
+        } else {
+            // Les étudiants voient seulement les rétrospectives de leurs promotions
+            $userCohortIds = $user->cohorts()->pluck('cohorts.id')->toArray();
+            $query->whereIn('cohort_id', $userCohortIds);
         }
 
         $retros = $query->get()->groupBy('cohort_id');
+        
+        // Récupérer uniquement les promotions pertinentes en fonction du rôle
+        if ($userRole === 'admin') {
+            $cohorts = Cohort::all();
+        } elseif ($userRole === 'teacher') {
+            $cohorts = Cohort::whereIn('id', $retros->keys())->get();
+        } else {
+            $cohorts = $user->cohorts;
+        }
 
-        $cohorts = Cohort::all();
-
-        return view('pages.retros.index', compact('retros', 'cohorts'));
+        $isStudent = !in_array($userRole, ['admin', 'teacher']);
+        return view('pages.retros.index', compact('retros', 'cohorts', 'isStudent'));
     }
 
     /**
@@ -76,8 +95,46 @@ class RetroController extends Controller
      */
     public function show(Retro $retro)
     {
+        $user = Auth::user();
+        $userRole = $user->school()->pivot->role ?? null;
+        
+        // Vérification des autorisations
+        if (!$userRole || ($userRole !== 'admin' && $userRole !== 'teacher')) {
+            // Pour les étudiants, vérifier qu'ils appartiennent à la promotion
+            $userCohortIds = $user->cohorts()->pluck('cohorts.id')->toArray();
+            if (!in_array($retro->cohort_id, $userCohortIds)) {
+                abort(403, 'Vous n\'avez pas accès à cette rétrospective.');
+            }
+        } elseif ($userRole === 'teacher' && $retro->user_id !== $user->id) {
+            // Les enseignants ne peuvent voir que leurs propres rétrospectives
+            abort(403, 'Vous n\'avez pas accès à cette rétrospective.');
+        }
+        
         $retro->load(['columns.data']);
-        return view('pages.retros.show', compact('retro'));
+        
+        // Si la rétrospective n'a pas encore de colonnes, créons-en quelques-unes par défaut
+        if ($retro->columns->isEmpty()) {
+            $defaultColumns = [
+                'Points positifs' => 0,
+                'Points à améliorer' => 1,
+                'Actions' => 2
+            ];
+            
+            foreach ($defaultColumns as $name => $position) {
+                $retro->columns()->create([
+                    'name' => $name,
+                    'position' => $position
+                ]);
+            }
+            
+            // Rechargement des données après création des colonnes par défaut
+            $retro->load(['columns.data']);
+        }
+        
+        // Indiquer si l'utilisateur est un étudiant ou non (pour la gestion des autorisations dans la vue)
+        $isStudent = !in_array($userRole, ['admin', 'teacher']);
+        
+        return view('pages.retros.show', compact('retro', 'isStudent'));
     }
 
     /**
@@ -89,5 +146,72 @@ class RetroController extends Controller
 
         return redirect()->route('retro.index')
             ->with('success', __('Rétrospective supprimée avec succès.'));
+    }
+
+    /**
+     * Add a new item to a column in the retrospective
+     */
+    public function addItem(Request $request, RetroColumn $column)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
+        
+        $user = Auth::user();
+        $userRole = $user->school()->pivot->role ?? null;
+        $retro = $column->retro;
+        
+        // Vérifier que l'utilisateur a accès à cette rétrospective
+        if (!$userRole) {
+            abort(403, 'Vous n\'êtes pas autorisé à ajouter des retours.');
+        } elseif ($userRole === 'teacher' && $retro->user_id !== $user->id) {
+            // Les enseignants ne peuvent ajouter des retours que dans leurs propres rétrospectives
+            abort(403, 'Vous ne pouvez pas ajouter de retours à cette rétrospective.');
+        } elseif (!in_array($userRole, ['admin', 'teacher'])) {
+            // Pour les étudiants, vérifier qu'ils appartiennent à la promotion
+            $userCohortIds = $user->cohorts()->pluck('cohorts.id')->toArray();
+            if (!in_array($retro->cohort_id, $userCohortIds)) {
+                abort(403, 'Vous n\'êtes pas autorisé à ajouter des retours à cette rétrospective.');
+            }
+        }
+
+        // Déterminer la position de l'élément (à la fin de la liste)
+        $position = $column->data()->count();
+
+        // Créer l'élément dans la colonne
+        $item = $column->data()->create([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'position' => $position,
+        ]);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'id' => $item->id,
+                'name' => $item->name,
+                'description' => $item->description
+            ]);
+        }
+
+        return redirect()->route('retro.show', $column->retro_id)
+            ->with('success', __('Retour ajouté avec succès.'));
+    }
+
+    /**
+     * Remove an item from the retrospective
+     */
+    public function removeItem(Request $request, RetroData $item)
+    {
+        $retroId = $item->column->retro_id;
+        $item->delete();
+
+        if ($request->ajax()) {
+            return response()->json(['success' => true]);
+        }
+
+        return redirect()->route('retro.show', $retroId)
+            ->with('success', __('Retour supprimé avec succès.'));
     }
 }

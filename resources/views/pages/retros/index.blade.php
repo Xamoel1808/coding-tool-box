@@ -2,7 +2,9 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-lg font-semibold">{{ __('Rétrospectives') }}</h1>
-            <a href="{{ route('retro.create') }}" class="btn btn-primary">{{ __('Créer une rétro') }}</a>
+            @if(!$isStudent)
+                <a href="{{ route('retro.create') }}" class="btn btn-primary">{{ __('Créer une rétro') }}</a>
+            @endif
         </div>
     </x-slot>
 
@@ -25,11 +27,13 @@
                                 <p class="text-sm text-gray-600">{{ $retro->created_at->format('d/m/Y') }}</p>
                                 <div class="mt-2 space-x-2">
                                     <a href="{{ route('retro.show', $retro) }}" class="text-indigo-600 hover:text-indigo-900 inline-block">{{ __('Voir le Kanban') }}</a>
+                                    @if(!$isStudent)
                                     <form action="{{ route('retro.destroy', $retro) }}" method="POST" class="inline-block" onsubmit="return confirm('{{ __('Voulez-vous vraiment supprimer cette rétrospective ?') }}');">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-600 hover:text-red-900 inline-block">{{ __('Supprimer') }}</button>
                                     </form>
+                                    @endif
                                 </div>
                             </div>
                         @endforeach
