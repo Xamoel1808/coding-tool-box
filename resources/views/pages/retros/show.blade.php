@@ -19,12 +19,12 @@
             <!-- Nouveau Kanban implémenté avec Tailwind directement -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 @foreach($retro->columns as $column)
-                    <div class="bg-gray-100 rounded-lg p-4 shadow-sm">
+                    <div class="bg-gray-100 rounded-lg p-4 shadow-sm column" data-column-id="{{ $column->id }}">
                         <h3 class="font-bold text-lg mb-3 bg-blue-600 text-white p-2 rounded-t-lg">{{ $column->name }}</h3>
                         
                         <div class="space-y-3">
                             @foreach($column->data as $item)
-                                <div class="bg-white p-3 rounded shadow relative group">
+                                <div class="bg-white p-3 rounded shadow relative group card-item" draggable="true" data-item-id="{{ $item->id }}">
                                     <div class="flex justify-between items-start">
                                         <h4 class="font-semibold text-break mb-2 pr-6">{{ $item->name }}</h4>
                                         <form action="{{ route('retro.item.remove', $item->id) }}" method="POST" class="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -64,4 +64,51 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            let dragged;
+            function handleDragStart(e) {
+                dragged = e.target;
+                e.dataTransfer.effectAllowed = "move";
+            }
+            function handleDragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+            }
+            async function handleDrop(e) {
+                e.preventDefault();
+                if (dragged && e.currentTarget.classList.contains('column')) {
+                    const columnEl = e.currentTarget;
+                    columnEl.querySelector('.space-y-3').appendChild(dragged);
+                    // determine new position
+                    const items = Array.from(columnEl.querySelectorAll('.card-item'));
+                    const newPos = items.indexOf(dragged);
+                    const itemId = dragged.getAttribute('data-item-id');
+                    const columnId = columnEl.getAttribute('data-column-id');
+                    // send update to server
+                    try {
+                        await fetch(`/retros/items/${itemId}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': token,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ column_id: columnId, position: newPos })
+                        });
+                    } catch (err) {
+                        console.error('Move failed', err);
+                    }
+                    dragged = null;
+                }
+            }
+            document.querySelectorAll('.card-item').forEach(item => item.addEventListener('dragstart', handleDragStart));
+            document.querySelectorAll('.column').forEach(col => {
+                col.addEventListener('dragover', handleDragOver);
+                col.addEventListener('drop', handleDrop);
+            });
+        });
+    </script>
 </x-app-layout>

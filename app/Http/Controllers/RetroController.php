@@ -234,4 +234,56 @@ class RetroController extends Controller
         return redirect()->route('retro.show', $retroId)
             ->with('success', __('Retour supprimé avec succès.'));
     }
+
+    /**
+     * Move an item to a different column and/or position
+     */
+    public function moveItem(Request $request, RetroData $item)
+    {
+        $data = $request->validate([
+            'column_id' => 'required|exists:retros_columns,id',
+            'position'  => 'required|integer|min:0',
+        ]);
+
+        $targetColumn = RetroColumn::findOrFail($data['column_id']);
+        $retro = $item->column->retro;
+        $originalColumn = $item->column;
+
+        // Authorization similar to addItem/removeItem
+        $userRole = Auth::user()->school()->pivot->role ?? null;
+        if (!$userRole) {
+            abort(403);
+        }
+        // Teachers only on own
+        if ($userRole === 'teacher' && $retro->user_id !== Auth::id()) {
+            abort(403);
+        }
+        // Students only in cohort
+        if (!in_array($userRole, ['admin', 'teacher'])) {
+            $userCohortIds = Auth::user()->cohorts()->pluck('cohorts.id')->toArray();
+            if (!in_array($retro->cohort_id, $userCohortIds)) {
+                abort(403);
+            }
+        }
+
+        DB::transaction(function () use ($item, $targetColumn, $data, $originalColumn) {
+            // Move item
+            $item->update([
+                'retros_column_id' => $targetColumn->id,
+                'position' => $data['position'],
+            ]);
+            // Reorder items in target column
+            $targetColumn->data()->get()->each(function ($it, $index) {
+                $it->update(['position' => $index]);
+            });
+            // Reorder items in original column if moved across
+            if ($originalColumn->id !== $targetColumn->id) {
+                $originalColumn->data()->get()->each(function ($it, $index) {
+                    $it->update(['position' => $index]);
+                });
+            }
+        });
+
+        return response()->json(['success' => true]);
+    }
 }

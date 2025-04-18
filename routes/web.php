@@ -58,6 +58,7 @@ Route::middleware('auth')->group(function () {
         Route::get('retros', [RetroController::class, 'index'])->name('retro.index');
         Route::post('retros/columns/{column}/items', [RetroController::class, 'addItem'])->name('retro.column.addItem');
         Route::delete('retros/items/{item}', [RetroController::class, 'removeItem'])->name('retro.item.remove');
+        Route::patch('retros/items/{item}', [RetroController::class, 'moveItem'])->name('retro.item.move');
         
         // Routes accessibles uniquement aux enseignants et administrateurs
         Route::middleware(EnsureUserIsTeacherOrAdmin::class)->group(function () {
