@@ -9,6 +9,8 @@ use App\Models\RetroData;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Events\CardMoved;
+use App\Events\CardAdded;
 
 class RetroController extends Controller
 {
@@ -186,6 +188,15 @@ class RetroController extends Controller
             'position' => $position,
         ]);
 
+        // Broadcast card-added event to other clients
+        event(new \App\Events\CardAdded(
+            $item->id,
+            $column->id,
+            $item->name,
+            $item->description,
+            $position
+        ));
+
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
@@ -226,6 +237,9 @@ class RetroController extends Controller
         }
 
         $item->delete();
+
+        // Broadcast card-removed event to other clients
+        event(new \App\Events\CardRemoved($item->id, $retroColumn->id));
 
         if ($request->ajax()) {
             return response()->json(['success' => true]);
@@ -283,6 +297,9 @@ class RetroController extends Controller
                 });
             }
         });
+
+        // Dispatch CardMoved event to broadcast via Pusher
+        event(new CardMoved($item->id, $originalColumn->id, $targetColumn->id, $data['position']));
 
         return response()->json(['success' => true]);
     }
