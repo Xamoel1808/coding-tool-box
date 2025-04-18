@@ -1,100 +1,105 @@
-# 🚀 Coding Tool Box – Guide d'installation
+# Coding Tool Box
 
-Bienvenue dans **Coding Tool Box**, un outil complet de gestion pédagogique conçu pour la Coding Factory.  
-Ce projet Laravel inclut la gestion des groupes, promotions, étudiants, rétro (Kanban), QCM  dynamiques, et bien plus.
+Une application web de gestion de groupes pédagogiques, développée avec le framework Laravel.
 
----
+## Caractéristiques principales
 
-## 📦 Prérequis
+- Gestion des écoles, cohortes et étudiants
+- Création et attribution automatique de groupes
+- Rétrospectives interactives (Retro)
+- Système de permissions et politiques d'accès
 
-Assurez-vous d’avoir les éléments suivants installés sur votre machine :
+## Prérequis
 
-- PHP ≥ 8.1
+- PHP >= 8.2
 - Composer
-- MySQL ou MariaDB
-- Node.js + npm (pour les assets frontend si nécessaire)
-- Laravel CLI (`composer global require laravel/installer`)
+- Node.js & npm
+- Base de données (MySQL, PostgreSQL, SQLite, etc.)
 
----
+## Installation
 
-## ⚙️ Installation du projet
+1. Cloner le dépôt :
+   ```bash
+   git clone https://votre.repo/coding-tool-box.git
+   cd coding-tool-box
+   ```
 
-Exécutez les étapes ci-dessous pour lancer le projet en local :
+2. Installer les dépendances PHP avec Composer :
+   ```bash
+   composer install
+   ```
 
-### 1. Cloner le dépôt
+3. Copier le fichier d'environnement et générer la clé d'application :
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
 
-```bash
-git clone https://m_thibaud@bitbucket.org/m_thibaud/projet-web-2025.git
-cd coding-tool-box
-cp .env.example .env
+4. Configurer les variables d'environnement dans `.env` :
+   ```dotenv
+   # Base de données
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=nom_de_votre_bd
+   DB_USERNAME=votre_utilisateur
+   DB_PASSWORD=votre_mot_de_passe
+
+   # Pusher (broadcasting en temps réel)
+   PUSHER_APP_ID=votre_app_id
+   PUSHER_KEY=votre_pusher_key
+   PUSHER_SECRET=votre_pusher_secret
+   PUSHER_CLUSTER=votre_cluster
+   MIX_PUSHER_APP_KEY=${PUSHER_KEY}
+   MIX_PUSHER_APP_CLUSTER=${PUSHER_CLUSTER}
+
+   # Gemini / AI
+   AI_API_URL=https://generativelanguage.googleapis.com/v1beta
+   AI_API_KEY=votre_clé_api_google_gemini
+   AI_MODEL=gemini-2.0-flash
+   ```
+
+5. Exécuter les migrations et les seeders (si nécessaire) :
+   ```bash
+   php artisan migrate --seed
+   ```
+
+6. Installer les dépendances front-end et compiler les assets :
+   ```bash
+   npm install
+   npm run dev
+   ```
+
+## Utilisation
+
+- Démarrer le serveur de développement :
+  ```bash
+  php artisan serve
+  ```
+  L'application est accessible sur `http://localhost:8000`.
+
+- Tâches utilitaires :
+  - Surveillance des files d'attente : `php artisan queue:listen`
+  - Exécution des tests : `php artisan test`
+
+## Structure du projet
+
 ```
-
-### 2. Configuration de l'environnement
-
-```bash
-✍️ Ouvrez le fichier .env et configurez les paramètres liés à votre base de données :
-
-DB_DATABASE=nom_de_votre_bdd
-DB_USERNAME=utilisateur
-DB_PASSWORD=motdepasse
+app/
+├── Http/
+│   ├── Controllers/
+│   └── Middleware/
+├── Models/
+├── Policies/
+├── Services/
+database/
+├── migrations/
+└── seeders/
+public/
+resources/
+├── js/
+└── views/
+routes/
+├── web.php
+└── api.php
 ```
-
-### 3. Installation des dépendances PHP
-
-```bash
-composer install
-```
-
-### 4. Nettoyage et optimisation du cache
-
-```bash
-php artisan optimize:clear
-```
-
-### 5. Génération de la clé d'application
-
-```bash
-php artisan key:generate
-```
-
-### 6. Migration de la base de données
-
-```bash
-php artisan migrate
-```
-
-### 7. Population de la base (Données de test)
-
-```bash
-php artisan db:seed
-```
-
----
-
-## 💻 Compilation des assets (si nécessaire)
-
-```bash
-npm install
-npm run dev
-```
-
----
-
-## 👤 Comptes de test disponibles
-
-| Rôle       | Email                         | Mot de passe |
-|------------|-------------------------------|--------------|
-| **Admin**  | admin@codingfactory.com       | 123456       |
-| Enseignant | teacher@codingfactory.com     | 123456       |
-| Étudiant   | student@codingfactory.com     | 123456       |
-
----
-
-## 🚧 Fonctionnalités principales
-
-- 🔧 Gestion des groupes, promotions, étudiants
-- 📅 Vie commune avec système de pointage
-- 📊 Bilans semestriels étudiants via QCM générés par IA
-- 🧠 Génération automatique de QCM par langage sélectionné
-- ✅ Système de Kanban pour les rétrospectives
-- 📈 Statistiques d’usage et suivi pédagogique
